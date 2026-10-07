@@ -1,0 +1,165 @@
+# Northstar ERP Guide
+
+## Overview
+Northstar ERP is a demo ERP for industrial sales and inventory operations. It supports customer enquiries, product catalog management, stock tracking, quotations, sales orders, and dispatch workflows.
+
+The project is split into three main parts:
+- Backend: Node.js + Express API
+- Frontend: React + Vite application
+- Database: PostgreSQL support with an in-memory fallback for local demos
+
+## Architecture
+
+### Backend
+The backend is implemented in `Backend/server.js` and mounts routes for authentication, customers, enquiries, inventory, products, quotations, sales orders, and dispatch.
+
+Key backend folders:
+- `Backend/Controllers/` — request handlers for each feature area
+- `Backend/Routes/` — HTTP route definitions
+- `Backend/Middleware/` — authentication, role-based access, and error handling
+- `Backend/Services/` — helper logic for business calculations and order processing
+- `Backend/Validators/` — input validation for API requests
+- `Backend/Config/db.js` — PostgreSQL connection pool configuration
+- `Backend/data/store.js` — in-memory data for demo mode
+
+### Frontend
+The user interface is in `Frontend/case_study_fundsroom/` and uses React with Vite. It provides pages for overview, enquiries, products, inventory, and sales orders.
+
+### Database
+The SQL definitions live in `Database/schema.sql`. The admin seeding logic is in `Database/seed.sql` and uses PostgreSQL `pgcrypto` to hash the admin password before storing it.
+
+## Business workflow
+
+### Customer enquiry lifecycle
+1. A sales user creates or selects a customer.
+2. A new enquiry is submitted with product items and quantity.
+3. The enquiry can move through `NEW`, `QUOTED`, `WON`, and `LOST` states.
+4. A quotation can be created from the enquiry, then converted to a sales order.
+
+### Inventory and reservation rules
+- Inventory tracks both physical stock and reserved stock.
+- `availableQuantity` is calculated as `physicalQuantity - reservedQuantity`.
+- Admin confirmation reserves stock without reducing the physical quantity.
+- The database enforces checks to prevent negative quantities, out-of-range reservations, and overselling.
+
+### Roles and permissions
+- `ADMIN` can add products, adjust stock, and confirm sales orders.
+- `SALES_USER` can work with customer, enquiry, quotation, and order workflows.
+- The first registered user in an empty workspace becomes the administrator.
+
+## Local setup
+
+### 1. Install backend dependencies
+```powershell
+cd Backend
+npm install
+npm run dev
+```
+
+The API starts on `http://localhost:5000` by default.
+
+### 2. Install frontend dependencies
+```powershell
+cd Frontend/case_study_fundsroom
+npm install
+npm run dev
+```
+
+The frontend is usually served on `http://localhost:5173`.
+
+### 3. Configure environment variables
+Create a `.env` file in `Backend/` for PostgreSQL-backed mode:
+
+```env
+DB_HOST=localhost
+DB_NAME=northstar_erp
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_PORT=5432
+JWT_SECRET=your_secure_secret
+PORT=5000
+```
+
+The frontend can target the backend with:
+
+```env
+VITE_API_URL=http://localhost:5000
+```
+
+If database settings are not present, the app automatically runs in in-memory demo mode using `Backend/data/store.js`.
+
+## API overview
+Base URL: `http://localhost:5000/api`
+
+| Area | Endpoint | Purpose | Access |
+| --- | --- | --- | --- |
+| Auth | `POST /auth/register` | Register a new user | Public |
+| Auth | `POST /auth/login` | Log in and receive a token | Public |
+| Auth | `GET /auth/me` | Fetch current user details | Authenticated |
+| Customers | `GET /customers` | List customers | Authenticated |
+| Customers | `POST /customers` | Create a customer | Authenticated |
+| Enquiries | `GET /enquiries` | List enquiries | Authenticated |
+| Enquiries | `POST /enquiries` | Create an enquiry | Authenticated |
+| Enquiries | `PATCH /enquiries/:id/status` | Update enquiry status | Authenticated |
+| Inventory | `GET /inventory` | View stock | Authenticated |
+| Inventory | `PATCH /inventory/:id` | Update stock values | Admin |
+| Products | `GET /products` | List products | Authenticated |
+| Products | `POST /products` | Add a product | Admin |
+| Quotations | `GET /quotations` | List quotations | Authenticated |
+| Quotations | `POST /quotations` | Create a quotation | Authenticated |
+| Sales orders | `GET /sales-orders` | List orders | Authenticated |
+| Sales orders | `POST /sales-orders` | Create sales order from enquiry | Authenticated |
+| Sales orders | `PATCH /sales-orders/:id/status` | Confirm an order | Admin |
+| Dispatch | `GET /dispatch` | List dispatch records | Authenticated |
+
+## Database setup
+Use PostgreSQL for realistic stock and order handling.
+
+1. Create a PostgreSQL database.
+2. Set the database environment variables.
+3. Apply the schema:
+
+```powershell
+psql -d northstar_erp -f Database/schema.sql
+```
+
+4. Optionally seed the admin account:
+
+```powershell
+$env:NORTHSTAR_ADMIN_PASSWORD = "your_secure_password"
+psql -d northstar_erp -f Database/seed.sql
+```
+
+This script hashes the admin password with PostgreSQL `pgcrypto` and avoids storing the plaintext password in SQL.
+
+## Validation
+Run these checks from the project root:
+
+```powershell
+cd Backend
+npm test
+cd ../Frontend/case_study_fundsroom
+npm run build
+```
+
+The backend test suite covers registration, login, inventory access, and reservation safety. The frontend build ensures the app compiles successfully.
+
+## Notes for developers
+- The backend falls back to in-memory demo data when no database is configured.
+- The in-memory mode is useful for quick demos, but it resets when the backend restarts.
+- PostgreSQL is the recommended mode for real transactional behavior and stock protection.
+- Keep validation and authorization logic in the existing `Validators/` and `Middleware/` folders when extending the app.
+
+## Troubleshooting
+- If the backend fails to start, verify Node dependencies and database configuration.
+- If the frontend cannot reach the API, confirm that `VITE_API_URL` matches the backend origin.
+- If stock updates fail, check that the current user is an admin and that inventory rules are not being violated.
+
+## Related files
+- `README.md` — quick-start instructions
+- `Backend/server.js` — application bootstrap
+- `Database/schema.sql` — schema definition
+- `Database/seed.sql` — admin provisioning script
+- `Backend/Tests/` — API validation cases
+
+This document provides a practical guide to understanding, running, and extending the Northstar ERP demo.
