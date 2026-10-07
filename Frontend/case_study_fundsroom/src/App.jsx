@@ -146,6 +146,6 @@ function Dashboard({ user, onLogout }) {
 export default function App() {
   const { user, setUser, checkingSession, logout } = useSession();
 
-  if (checkingSession) return <div className="session-loading">Opening your workspace…</div>;
+  if (checkingSession) return <div className="grid min-h-screen place-items-center bg-slate-50 text-sm text-slate-500">Opening your workspace…</div>;
   return user ? <Dashboard user={user} onLogout={logout} /> : <Login onAuthenticated={setUser} />;
 }

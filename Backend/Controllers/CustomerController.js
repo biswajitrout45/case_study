@@ -27,8 +27,12 @@ const createCustomer = async (req, res, next) => {
       city = "",
     } = req.body || {};
 
-    if (!companyName?.trim() || !contactPerson?.trim() || !mobile?.trim()) {
+    if (!companyName?.trim() || !contactPerson?.trim() || typeof mobile !== "string" || !mobile.trim()) {
       return res.status(400).json({ success: false, message: "Company name, contact person, and mobile are required" });
+    }
+    const normalizedMobile = mobile.trim().replace(/[\s-]/g, "");
+    if (!/^(?:\+91)?[6-9]\d{9}$/.test(normalizedMobile)) {
+      return res.status(400).json({ success: false, message: "Please provide a valid Indian mobile number" });
     }
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ success: false, message: "Please provide a valid email address" });
@@ -40,7 +44,7 @@ const createCustomer = async (req, res, next) => {
          VALUES ($1, $2, $3, $4, $5)
          RETURNING id, company_name AS "companyName", contact_person AS "contactPerson",
                    mobile, email, city, created_at AS "createdAt"`,
-        [companyName.trim(), contactPerson.trim(), mobile.trim(), email?.trim() || null, city.trim()],
+        [companyName.trim(), contactPerson.trim(), normalizedMobile, email?.trim() || null, city.trim()],
       );
       return res.status(201).json({ success: true, data: result.rows[0] });
     }
@@ -49,7 +53,7 @@ const createCustomer = async (req, res, next) => {
       id: `customer_${Date.now()}_${Math.random().toString(16).slice(2, 6)}`,
       companyName: companyName.trim(),
       contactPerson: contactPerson.trim(),
-      mobile: mobile.trim(),
+      mobile: normalizedMobile,
       email: email?.trim() || "",
       city: city.trim(),
       createdAt: new Date().toISOString(),

@@ -37,6 +37,8 @@ CREATE TABLE customers (
     contact_person VARCHAR(100) NOT NULL,
 
     mobile VARCHAR(20) NOT NULL,
+    CONSTRAINT customers_mobile_check
+        CHECK (mobile ~ '[0-9]{10}$'),
 
     email VARCHAR(150),
 
